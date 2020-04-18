@@ -1,29 +1,28 @@
-# COBOL on k8s
+# COBOL on OpenShift
 
 ## Scope
 
 This repository shows off a simple [ETL pipeline](https://databricks.com/glossary/etl-pipeline) using
-COBOL and Kubernetes.
+COBOL and OpenShift.
 
 There are two main portions to this repository. The [docker-containers](./docker-containers) holds the
-configuration and repeatable builds of the different containers of the ETL pipeline. The [k8s](./k8s)
-directory has the `.yaml` files to deploy the said containers to a Kubernetes cluster on [IBM Cloud](https://cloud.ibm.com).
+configuration and repeatable builds of the different containers of the ETL pipeline. The [OpenShift](./os)
+directory has the `.yaml` file to deploy the said containers to a OpenShift cluster on [IBM Cloud](https://cloud.ibm.com).
 
 The demo COBOL applicaiton is located [here](./plus5numbers.cbl). It is a simple COBOL application
 that takes in a file called `numbers.txt` (an [example](./numbers.txt.example) here) and outputs a
 file called `newNumbers.txt` with every number rewritten 5 added to it. If you take a look at the
 diagram below you see the pipeline illustrated.
 
-![](./img/k8s-cobol.png)
+> TODO Image of the pipeline
 
 ## Demoing it Yourself
-
 ### Pre-Requisites
 
 - An s3 bucket like Cloud Object Storage on IBM Cloud
 - `s3fs` installed on the machine to upload a `numbers.txt`
 - `docker` if you want to build the containers
-- A Kubernetes cluster like the Kubernetes Service on IBM Cloud
+- An OpenShift cluster like the OpenShift Service on IBM Cloud
 - Edit the `local.env.example` and save it as `local.env` for the needed `exports`
 
 ### Object storage
@@ -55,49 +54,34 @@ s3fs asgharlabs-in s3/ -o url=https://s3.sjc04.cloud-object-storage.appdomain.cl
 
 ### Steps to Run the Demo
 
-Assuming you have built and deployed the containers to something like Docker Hub, you can to the following
-steps to get just run the demo.
+#### Building from Prebuilt Containers
 
-- Go into the `k8s/` directory on the local machine
-- Run `01_setup.sh` to set up the kubernetes cluster, you should see something like the following:
-```console
-$ > ./01_setup.sh
+- Create an OpenShift cluster and connect to it via the `oc` command. If you don't know how to, follow [this link](https://learn.openshift.com/introduction/cluster-access/).
+- Create a new project to isolate this from other things running on your OpenShift instance
+```bash
+oc new-project cobol-on-os
+```
+- Deploy the _public_ pods (from docker hub `jjasghar`)
+```bash
+cd os
+oc create -f cobol.yaml
+```
 
-persistentvolumeclaim/k8s-cobol created
-.........................deployment.apps/workhorse created
-deployment.apps/watcher-in created
-deployment.apps/watcher-out created
-deployment.apps/cobol-process created
+#### Bulding from Source
+
+- Go into the `docker-containers/` directory on the local machine
+- Create build for each of the containers. You'll need to point them to your `s3` bucket.
+```bash
+oc new-app . --context-dir=cobol-batch/ --name=cobol-batch
+oc new-app . --context-dir=watcher-in/ --name=watcher-in
+oc new-app . --context-dir=watcher-out/ --name=watcher-out
+OR
+cd cobol-batch && docker build . -tag <yourdockerhub>/cobol-batch:latest && docker push <yourdockerhub>/cobol-batch:latest && cd ..
+cd watcher-in && docker build . -tag <yourdockerhub>/watcher-in:latest && docker push <yourdockerhub>/watcher-in:latest && cd ..
+cd watcher-out && docker build . -tag <yourdockerhub>/watcher-out:latest && docker push <yourdockerhub>/wacher-out:latest && cd ..
 ```
-- When that is done, you will have your pods on the Kubernetes cluster.
-```console
-$ > kubectl get pods
-NAME                             READY   STATUS    RESTARTS   AGE
-cobol-process-7f668fcb59-4lhtz   1/1     Running   0          79s
-watcher-in-579779fd7d-ss74q      1/1     Running   0          80s
-watcher-out-6fbfbd96f5-srtkv     1/1     Running   0          79s
-workhorse-64ff8944b-5ff9c        1/1     Running   0          86s
-```
-- Open up 3 terminals and go to the `display/` directory, run one script in each, you should see
-the outputs of each step in the pipeline.
-- Copy a `numbers.txt` into the `s3/` directory, and in the `watcher-in` terminal you should see
-the `wget` and file move.
-- Look at the `cobol-process` terminal and you should see the output of the file and new file.
-- Finally look at the `watcher-out` container and you should see the new file outputed.
-- When you are done, run `99_cleanup.sh` and you should see something like:
-```console
-$ > ./99_cleanup.sh
-deployment.extensions "cobol-process" deleted
-deployment.extensions "watcher-in" deleted
-deployment.extensions "watcher-out" deleted
-deployment.extensions "workhorse" deleted
-pod "cobol-process-7f668fcb59-4lhtz" deleted
-pod "watcher-in-579779fd7d-ss74q" deleted
-pod "watcher-out-6fbfbd96f5-srtkv" deleted
-pod "workhorse-64ff8944b-5ff9c" deleted
-service "kubernetes" deleted
-persistentvolumeclaim "k8s-cobol" deleted
-```
+- Create a `deployment.yaml` like the [cobol.yaml](os/cobol.yaml) example we have.
+- Deploy and it should start the pipeline when it finds the file in the `s3` bucket.
 
 ## License & Authors
 

@@ -1,10 +1,19 @@
 FROM centos:7
 
+ENV HOME=/src
+RUN mkdir -p ${HOME} && \
+    useradd -u 1001 -r -g 0 -d ${HOME} -s /sbin/nologin \
+            -c "COBOL Application User" default
+WORKDIR ${HOME}
+
 ENV GMP_VERSION=6.0.0
 ENV GNU_COBOL=1.1
 
 RUN yum install -y libtool ncurses ncurses-devel ncurses-libs make && \
-    yum install -y libdb-devel libdbi libdbi-devel libtool-ltdl libtool-ltdl-devel db4 db4-devel wget
+        yum install -y libdb-devel libdbi libdbi-devel libtool-ltdl libtool-ltdl-devel db4 db4-devel wget
+
+RUN chown -R 1001:0 ${HOME} && \
+    find ${HOME} -type d -exec chmod g+ws {} \;
 
 RUN mkdir -p /src/cobol
 
@@ -23,4 +32,6 @@ RUN cd /src/cobol && cobc -free -x -o plus5numbers-exe plus5numbers.cbl
 
 ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
 
+
+USER 1001
 CMD ["/src/watcher-cobol.sh"]

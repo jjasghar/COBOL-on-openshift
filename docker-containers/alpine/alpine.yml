@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alpine-deployment
+  labels:
+    app: alpine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alpine
+  template:
+    metadata:
+      labels:
+        app: alpine
+    spec:
+      volumes:
+        - name: shared-data
+          emptyDir: {}
+      containers:
+      - name: alpine-1
+        image: alpine:latest
+        command: [ '/bin/sleep', '5000']
+        volumeMounts:
+        - name: shared-data
+          mountPath: /mnt/shared
+      - name: alpine-2
+        image: alpine:latest
+        command: [ '/bin/sleep', '5000']
+        volumeMounts:
+        - name: shared-data
+          mountPath: /mnt/shared

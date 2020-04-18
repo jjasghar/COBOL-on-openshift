@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cobol-deployment
+  labels:
+    app: cobol
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cobol
+  template:
+    metadata:
+      labels:
+        app: cobol
+    spec:
+      initContainers:
+        - name: make-directory
+          image: jjasghar/watcher-in:latest
+          command:
+            - 'mkdir'
+            - '-p'
+            - '/mnt/cobol/in'
+            - '/mnt/cobol/out'
+          volumeMounts:
+          - name: shared-data
+            mountPath: /mnt/cobol
+      volumes:
+        - name: shared-data
+          emptyDir: {}
+      containers:
+      - name: watcher-in
+        image: jjasghar/watcher-in:latest
+        volumeMounts:
+        - name: shared-data
+          mountPath: /mnt/cobol
+      - name: watcher-out
+        image: jjasghar/watcher-out:latest
+        volumeMounts:
+        - name: shared-data
+          mountPath: /mnt/cobol
+      - name: cobol-centos
+        image: jjasghar/cobol-centos:latest
+        volumeMounts:
+        - name: shared-data
+          mountPath: /mnt/cobol
